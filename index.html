@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>日文單字翻卡測驗 - 手機版</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .header-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        
+        h1 { font-size: 22px; color: #333; margin: 0 0 5px 0; }
+        
+        .progress-text {
+            font-size: 14px;
+            color: #e67e22;
+            font-weight: bold;
+            margin-bottom: 15px;
+            background: #fff3e0;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .mode-selector { 
+            text-align: left; 
+            background: #eef2f5; 
+            padding: 10px; 
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .mode-selector label { 
+            display: flex;
+            align-items: center;
+            cursor: pointer; 
+            font-weight: bold; 
+            color: #2c3e50; 
+            padding: 5px 0;
+        }
+        .mode-selector input[type="radio"] {
+            transform: scale(1.3);
+            margin-right: 10px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        button {
+            flex: 1; 
+            color: white; border: none;
+            padding: 15px 10px; font-size: 16px; border-radius: 8px;
+            cursor: pointer; transition: transform 0.1s, background 0.3s; font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+        }
+        button:active { transform: translateY(2px); }
+        
+        .btn-primary { background-color: #3498db; }
+        .btn-primary:active { background-color: #2980b9; }
+        
+        .btn-secondary { background-color: #9b59b6; }
+        .btn-secondary:active { background-color: #8e44ad; }
+
+        .hint-text {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+            padding-bottom: 30px;
+        }
+
+        .card {
+            perspective: 1000px;
+            height: 90px;
+            width: 100%;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+            position: relative;
+            border-radius: 12px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 12px;
+            padding: 10px;
+            box-sizing: border-box;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        .card-front {
+            background-color: #fff;
+            color: #2c3e50;
+            border: 2px solid #e0e6ed;
+        }
+        .card-back {
+            background-color: #27ae60;
+            color: white;
+            transform: rotateY(180deg);
+            border: 2px solid #2ecc71;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-container">
+    <h1>📝 日文單字測驗</h1>
+    <div id="progressDisplay" class="progress-text">剩餘題目: 35 / 35</div>
+    
+    <div class="mode-selector">
+        <label><input type="radio" name="mode" value="1" checked> 顯示漢字，翻開假名</label>
+        <label><input type="radio" name="mode" value="2"> 顯示假名，翻開漢字</label>
+        <label><input type="radio" name="mode" value="3"> 混合題型 (隨機)</label>
+    </div>
+
+    <div class="action-buttons">
+        <button onclick="drawNewBatch()" class="btn-primary">🎲 抽下一組</button>
+        <button onclick="toggleAllCards()" id="toggleAllBtn" class="btn-secondary">🔼 全部翻開</button>
+    </div>
+</div>
+
+<div class="hint-text">💡 點擊單一卡片可翻面，或使用上方按鈕全翻</div>
+
+<div class="cards-list" id="cardsContainer">
+    </div>
+
+<script>
+    const vocabData = [
+        { kanji: "通年", kana: "つう.ねん" },
+        { kanji: "選択科目", kana: "せん.たく.か.もく" },
+        { kanji: "生活", kana: "せい.かつ" },
+        { kanji: "仕方", kana: "し.かた" },
+        { kanji: "出席", kana: "しゅっ.せき" },
+        { kanji: "表見", kana: "ひょう.けん" },
+        { kanji: "必修", kana: "ひっ.しゅう" },
+        { kanji: "科目", kana: "か.もく" },
+        { kanji: "作成", kana: "さく.せい" },
+        { kanji: "履修", kana: "り.しゅう" },
+        { kanji: "欠席", kana: "けっ.せき" },
+        { kanji: "授業", kana: "じゅ.ぎょう" },
+        { kanji: "単位", kana: "たん.い" },
+        { kanji: "図書館", kana: "と.しょ.かん" },
+        { kanji: "利用", kana: "り.よう" },
+        { kanji: "登録", kana: "とう.ろく" },
+        { kanji: "健康診断", kana: "けん.こう.しん.だん" },
+        { kanji: "奨学金", kana: "しょう.がく.きん" },
+        { kanji: "事務所", kana: "じ.む.しょ" },
+        { kanji: "健康保険", kana: "けん.こう.ほ.けん" },
+        { kanji: "定員", kana: "てい.いん" },
+        { kanji: "交流", kana: "こう.りゅう" }, 
+        { kanji: "行事", kana: "ぎょう.じ" },
+        { kanji: "掲示板", kana: "けい.じ.ばん" },
+        { kanji: "休講", kana: "きゅう.こう" },
+        { kanji: "実習", kana: "じっ.しゅう" },
+        { kanji: "実際", kana: "じっ.さい" },
+        { kanji: "卒論", kana: "そつ.ろん" },
+        { kanji: "指導", kana: "し.どう" },
+        { kanji: "合宿", kana: "がっ.しゅく" },
+        { kanji: "応募", kana: "おう.ぼ" },
+        { kanji: "予算", kana: "よ.さん" },
+        { kanji: "大事", kana: "だい.じ" },
+        { kanji: "就職活動", kana: "しゅう.しょく.かつ.どう" },
+        { kanji: "歓迎", kana: "かん.げい" }
+    ];
+
+    let remainingVocab = [];  // 還沒抽出的單字池
+    let currentBatch = [];    // 目前畫面上顯示的 10 個單字
+    let isAllFlipped = false; // 記錄目前是否全翻開
+
+    // 洗牌函數
+    function shuffleArray(array) {
+        let newArray = [...array];
+        for (let i = newArray.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+        }
+        return newArray;
+    }
+
+    // 初始化單字池
+    function initPool() {
+        remainingVocab = shuffleArray([...vocabData]);
+        updateProgress();
+        drawNewBatch();
+    }
+
+    // 更新進度條文字
+    function updateProgress() {
+        const display = document.getElementById('progressDisplay');
+        display.innerText = `池內剩餘題目: ${remainingVocab.length} / ${vocabData.length}`;
+    }
+
+    // 從池子裡抽出新的 10 題 (或剩下的題數)
+    function drawNewBatch() {
+        // 如果池子空了，提示並重置
+        if (remainingVocab.length === 0) {
+            alert("🎉 恭喜！35 個單字都已經複習完畢！將為您重新洗牌開始下一輪。");
+            remainingVocab = shuffleArray([...vocabData]);
+        }
+
+        // 決定這次要抽幾題 (最多10題，如果剩餘不足10題就全抽)
+        const drawCount = Math.min(10, remainingVocab.length);
+        
+        // 從 remainingVocab 中剪下前 drawCount 個元素，放進 currentBatch
+        currentBatch = remainingVocab.splice(0, drawCount);
+        
+        updateProgress();
+        renderCards(); // 渲染這批單字
+
+        // 抽卡後滑動到卡片區
+        if(window.scrollY < 100) {
+           window.scrollBy({ top: 100, behavior: 'smooth' });
+        }
+    }
+
+    // 根據目前的 currentBatch 與題型設定，渲染卡片到畫面上
+    function renderCards() {
+        const container = document.getElementById('cardsContainer');
+        container.innerHTML = ''; 
+        
+        // 重置「全翻」狀態按鈕
+        isAllFlipped = false;
+        document.getElementById('toggleAllBtn').innerText = "🔼 全部翻開";
+
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+
+        currentBatch.forEach(word => {
+            let frontText, backText;
+            let currentType = mode;
+
+            if (mode === "3") {
+                currentType = Math.random() > 0.5 ? "1" : "2";
+            }
+
+            let kanaStr = word.kana || "資料錯誤"; 
+
+            if (currentType === "1") {
+                frontText = word.kanji;
+                backText = kanaStr;
+            } else {
+                frontText = kanaStr;
+                backText = word.kanji;
+            }
+
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'card';
+            
+            cardDiv.innerHTML = `
+                <div class="card-inner">
+                    <div class="card-front">${frontText}</div>
+                    <div class="card-back">${backText}</div>
+                </div>
+            `;
+
+            // 單點翻卡
+            cardDiv.addEventListener('click', function() {
+                this.classList.toggle('flipped');
+            });
+
+            container.appendChild(cardDiv);
+        });
+    }
+
+    // 全部翻開或蓋回的功能
+    function toggleAllCards() {
+        const cards = document.querySelectorAll('.card');
+        isAllFlipped = !isAllFlipped;
+        
+        cards.forEach(card => {
+            if (isAllFlipped) {
+                card.classList.add('flipped');
+            } else {
+                card.classList.remove('flipped');
+            }
+        });
+
+        document.getElementById('toggleAllBtn').innerText = isAllFlipped ? "🔽 全部蓋回" : "🔼 全部翻開";
+    }
+
+    // 監聽單選按鈕改變：只重新渲染目前的 10 題，不額外消耗題目
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+        radio.addEventListener('change', renderCards);
+    });
+
+    // 網頁載入時啟動
+    window.onload = initPool;
+</script>
+
+</body>
+</html>
